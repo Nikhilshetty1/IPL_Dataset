@@ -1,0 +1,2 @@
+# IPL_Dataset
+This was an analysis on IPL Datasets from 2008 to 2016. The dataset were analysed with the top N batsman, N bowlers, most matches, wickets, runs conceeded for all the seasons. Also the orange cap and purple cap holders for different seasons were found from the datasets. Code were done in R studio. All the filtered files of different analysis were converted to .rda files and then imported to tableau. Visualization of all the analysis was done here and a dashboard was designed for the same. 

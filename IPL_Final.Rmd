@@ -1,0 +1,211 @@
+---
+title: "Indian Premier League"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+
+```{r setup, include=FALSE}
+setwd("C://Users//Administrator//Desktop//Assignments//DV//assgn3//IPL Data 2008-16")
+library(flexdashboard)
+library(readxl)
+library(xlsx)
+library(sqldf)
+library(dplyr)
+library(ggplot2)
+batsman_score = read_excel("batsman_scored.xlsx")
+ball_by_ball = read_excel("ball_by_ball.xlsx")
+match = read_excel("match.xlsx")
+player_match = read_excel("player_match.xlsx")
+player = read_excel("player.xlsx")
+season = read_excel("season.xlsx")
+extra_runs = read_excel("extra_runs.xlsx")
+wickets_taken = read_excel("wicket_taken.xlsx")
+win_by = read_excel("win_by.xlsx")
+team = read_excel("team.xlsx")
+season_1=season[,c(1,5)]
+
+merge1 = merge(batsman_score,ball_by_ball)
+merge2 = merge(merge1,player,by.x = "striker",by.y = "player_id")
+merge3 = merge(merge2,match,all = T)
+merge4 = merge(merge3,season,all=T)
+match_1 = match[,c(1,5)]
+player_1 = player[,c(1,2)]
+merge5 = merge(ball_by_ball,wickets_taken,all = T)
+merge6 = merge(merge5,match_1,by.x ="match_id",by.y = "match_id" )
+merge7 = merge(merge6,player,by.x ="bowler" ,by.y ="player_id" )
+merge8 = merge(merge7,season_1,by.x = "season_id",by.y = "season_id")
+merge9 = merge(match,team,by.x = "match_winner",by.y = "team_id")
+merge10 = merge(merge9,season,by.x = "season_id",by.y = "season_id")
+merge11 = merge(merge1,wickets_taken,all = T)
+match_2 = match[,c(1,5)]
+merge12 = merge(merge11,match_2,by.x ="match_id" ,by.y = "match_id")
+merge13 = merge(merge12,season_1,by.x ="season_id",by.y = "season_id")
+memory.limit(100000)
+```
+
+Over all Top N Batsman 
+=============================
+
+Column{.tabset}
+-----------------
+###Based on Runs scored
+```{r}
+#library(shiny)
+question1 <- merge2 %>% group_by(player_name) %>% 
+      summarise(Total_Runs=sum(runs_scored,na.rm = T)) %>% arrange(-Total_Runs)
+colnames(question1)[1] = "Name_Of_Batsman"
+question1=as.data.frame(question1)
+#question1
+plot1 <- ggplot(question1, aes(x=Name_Of_Batsman,y=Total_Runs)) + geom_bar(stat = 'identity') + labs(x='Player Name',y='Total Runs',title="Top N batsman based on runs scored")  
+print(plot1)
+
+save(question1,file="question1.rda")
+
+```
+
+###Based on Batting Average
+```{r}
+question2 = merge2 %>% group_by(player_name) %>% summarise(Batting_Average = (sum(runs_scored,na.rm = T)/n_distinct(match_id)))%>% arrange(-Batting_Average)
+
+colnames(question2)[1]="Player_Name_Batting_Average"
+question2=data.frame(question2)
+#question2
+plot2 <- ggplot(question2, aes(x=Player_Name_Batting_Average,y=Batting_Average)) + geom_bar(stat = 'identity') + labs(x='Player Name',y='Batting Average',title="Top N batsman based on Batting Average")  
+print(plot2)
+save(question2,file="question2.rda")
+```
+
+###Based on Batting Strike Rate
+```{r}
+question3 <- merge2 %>% group_by(player_name) %>% 
+  summarise(Avg_Strike_Rate=sum(runs_scored,na.rm = T)/n()*100) %>% arrange(-Avg_Strike_Rate)
+question3=data.frame(question3)
+#question3
+plot3 <- ggplot(question3, aes(x=player_name,y=Avg_Strike_Rate)) + geom_bar(stat = 'identity') + labs(x='Player Name',y='Strike Rate',title="Top N batsman based on Batting strike rate")  
+print(plot3)
+save(question3,file="question3.rda")
+```
+
+###Based on Highest Score
+```{r}
+question4 <- merge2 %>%select(runs_scored,player_name,match_id)%>% group_by(player_name,match_id)  %>%  summarise(Highest_Runs=sum(runs_scored,na.rm=T))%>% arrange(-Highest_Runs)
+
+question4=data.frame(question4)
+question4= question4[!duplicated(question4$player_name),]
+plot4 <- ggplot(question4, aes(x=player_name,y=Highest_Runs)) + geom_bar(stat = 'identity') + labs(x='Player Name',y='Runs Scored',title="Top N batsman based on Batting strike rate")  
+print(plot4)
+save(question4,file="question4.rda")
+```
+
+Season wise 
+=============================
+
+Column{.tabset}
+-----------------
+###Orange Cap Holder
+```{r}
+question5 <- merge4 %>% group_by(season_year,player_name) %>% summarise(Number_of_Runs=sum(runs_scored)) %>% top_n(1,Number_of_Runs)
+question5=data.frame(question5)
+question5
+save(question5,file="question5.rda")
+```
+
+###Purple Cap holder
+```{r}
+question6 <- merge8 %>% group_by(season_year,player_name) %>% summarise(Number_of_Wickets=sum(!is.na(player_out))) %>% top_n(1,Number_of_Wickets)
+question6=data.frame(question6)
+question6
+save(question6,file="question6.rda")
+```
+
+
+Total Number of 
+=============================
+
+Column{.tabset}
+-----------------
+###Sixes
+
+```{r}
+question7 <- merge13 %>% filter(runs_scored==6) %>% group_by(season_year) %>% summarise(Total_no_of_Sixes=n())
+
+for(i in 1:length(question7)){
+  question7$year=seq(2008,2016)
+}
+
+question7$year=as.character(question7$year)
+#question7
+plot8 <- ggplot(question7, aes(x=as.factor(season_year),y=Total_no_of_Sixes)) +
+  geom_text(aes(label= Total_no_of_Sixes),vjust=-0.2,position = position_dodge(width = 0.1))+theme(axis.title.y = element_blank(),axis.text.y = element_blank())+geom_bar(stat = 'identity') + labs(x='Season Year',y='No of Sixes',title="Total No.of Sixes in all seasons")  
+print(plot8)
+class(question7)
+question7=data.frame(question7)
+save(question7,file="question7.rda")
+```
+
+
+###Fours
+
+```{r}
+question8 <- merge13 %>% filter(runs_scored==4) %>% group_by(season_year) %>% summarise(Total_no_of_Fours=n())
+
+for(i in 1:length(question8)){
+  question8$year=seq(2008,2016)
+}
+
+question8$year=as.character(question8$year)
+#question8
+plot8 <- ggplot(question8, aes(x=as.factor(season_year),y=Total_no_of_Fours)) +
+  geom_text(aes(label= Total_no_of_Fours),vjust=-0.2,position = position_dodge(width = 0.1))+theme(axis.title.y = element_blank(),axis.text.y = element_blank())+geom_bar(stat = 'identity') + labs(x='Season Year',y='No of Fours',title="Total No.of Fours in all seasons")  
+print(plot8)
+question8=data.frame(question8)
+save(question8,file="question8.rda")
+```
+
+###Matches
+
+```{r}
+question9 <- merge13 %>% group_by(season_year) %>% summarise(Total_no_of_Matches=n_distinct(match_id)) 
+#question9
+plot9 <- ggplot(question9, aes(x=as.factor(season_year),y=Total_no_of_Matches)) +
+  geom_text(aes(label= Total_no_of_Matches),vjust=-0.2,position = position_dodge(width = 0.1))+theme(axis.title.y = element_blank(),axis.text.y = element_blank())+geom_bar(stat = 'identity') + labs(x='Season Year',y='No of Matches',title="Total No.of Matches in all seasons")  
+print(plot9)
+question9=data.frame(question9)
+save(question9,file="question9.rda")
+```
+
+###Wickets
+```{r}
+question10 <- merge13  %>% filter(!is.na(kind_out)) %>%  group_by(season_year) %>% summarise(Total_no_of_Wickets=n())
+#question10
+plot10 <- ggplot(question10, aes(x=as.factor(season_year),y=Total_no_of_Wickets)) +
+  geom_text(aes(label= Total_no_of_Wickets),vjust=-0.2,position = position_dodge(width = 0.1))+theme(axis.title.y = element_blank(),axis.text.y = element_blank())+geom_bar(stat = 'identity') + labs(x='Season Year',y='No of Wickets',title="Total No.of Wickets in all seasons")  
+print(plot10)
+question10=data.frame(question10)
+save(question10,file="question10.rda")
+```
+
+Team Wise
+=============
+
+```{r}
+question11 = merge10 %>% group_by(season_year) %>% summarise(Finals_Played_On = max(match_date))
+question11_1 = merge10 %>% filter(match_date %in% question11$Finals_Played_On) %>% select(season_year,team_name)
+#question11_1
+question11_1=data.frame(question11_1)
+```
+
+```{r}
+question11_2 = merge10 %>% filter(match_date %in% question11$Finals_Played_On) %>% group_by(team_name) %>% summarise(Total_Number_of_Titles=n()) %>% arrange(Total_Number_of_Titles)
+#question11_2
+plot11 <- ggplot(question11_2, aes(x=as.factor(team_name),y=Total_Number_of_Titles)) +
+  geom_text(aes(label= Total_Number_of_Titles),vjust=-0.2,hjust=-0.5,position = position_dodge(width = 0.1))+theme(axis.title.y = element_blank(),axis.text.y = element_blank())+geom_bar(stat = 'identity') + labs(x='Team Name',y='No of Wickets',title="Count of title wins")  
+print(plot11)
+question11_2=data.frame(question11_2)
+save(question11_2,file="question11_2.rda")
+```
+
+
